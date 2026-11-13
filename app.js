@@ -22,7 +22,7 @@ function data(){switch(S.kind){case"url":{let v=$("urlValue").value.trim();if(v&
 function iconSvg(name){return '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 24 24" fill="none" stroke="#182c27" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+(iconPaths[name]||iconPaths.globe2)+'</svg>'}
 function logo(){if(S.source==="icon")return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(iconSvg($("iconChoice").value));if(S.source==="url")return $("logoUrl").value.trim()||undefined;return S.logo||undefined}
 function options(){const size=+$("size").value;const opt={width:size,height:size,type:"svg",data:data()||" ",margin:+$("quiet").value,qrOptions:{errorCorrectionLevel:$("errorLevel").value},dotsOptions:{color:$("qrColor").value,type:$("dotStyle").value},backgroundOptions:{color:$("transparent").checked?"rgba(0,0,0,0)":$("bgColor").value},cornersSquareOptions:{color:$("qrColor").value,type:S.corner},cornersDotOptions:{color:$("qrColor").value,type:S.corner==="square"?"square":"dot"},imageOptions:{crossOrigin:"anonymous",hideBackgroundDots:true,imageSize:+$("logoScale").value/100,margin:+$("logoPadding").value}};if(logo())opt.image=logo();return opt}
-function render(){if(!data()){toast("Add content to generate a QR code.");return}try{$("loading").classList.add("show");if(!S.qr){S.qr=new QRCodeStyling(options());S.qr.append($("qrCode"))}else S.qr.update(options());$("dimension").textContent=$("size").value+" × "+$("size").value+" px";$("artboard").style.background=$("transparent").checked?"#fff":$("bgColor").value;frameApply();$("loading").classList.remove("show")}catch(e){$("loading").classList.remove("show");toast("QR generation failed. Check the image or content.");console.error(e)}}
+function render(){if(!data()){toast("Add content to generate a QR code.");return}try{$("loading").classList.add("show");if(!S.qr){S.qr=new QRCodeStyling(options());S.qr.append($("qrCode"))}else S.qr.update(options());$("dimension").textContent=$("size").value+" Ã "+$("size").value+" px";$("artboard").style.background=$("transparent").checked?"#fff":$("bgColor").value;frameApply();$("loading").classList.remove("show")}catch(e){$("loading").classList.remove("show");toast("QR generation failed. Check the image or content.");console.error(e)}}
 let renderTimer;function later(){clearTimeout(renderTimer);renderTimer=setTimeout(render,140)}
 function frameApply(){const a=$("artboard");a.classList.remove("frame-outline","frame-bottom","frame-badge");if(S.frame!=="none")a.classList.add("frame-"+S.frame);a.style.setProperty("--frame",$("frameColor").value);$("caption").textContent=$("frameText").value||"SCAN ME";$("caption").style.color=$("frameTextColor").value}
 function setKind(k){S.kind=k;document.querySelectorAll("[data-kind]").forEach(b=>b.classList.toggle("active",b.dataset.kind===k));document.querySelectorAll("[data-field]").forEach(e=>e.classList.toggle("d-none",e.dataset.field!==k));later()}
@@ -34,7 +34,58 @@ function blobImage(blob){return new Promise((resolve,reject)=>{const u=URL.creat
 function save(blob,name){if(!blob)throw Error("No export data");const u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500)}
 async function png(){try{const blob=await S.qr.getRawData("png"),img=await blobImage(blob),n=+$("size").value,pad=Math.round(n*.035),extra=S.frame==="bottom"?Math.round(n*.14):0,c=document.createElement("canvas");c.width=n+pad*2;c.height=n+pad*2+extra;const x=c.getContext("2d");if(!$("transparent").checked){x.fillStyle=$("bgColor").value;x.fillRect(0,0,c.width,c.height)}x.drawImage(img,pad,pad,n,n);if(S.frame!=="none"){x.save();x.strokeStyle=$("frameColor").value;x.lineWidth=Math.max(4,Math.round(n*.012));if(S.frame==="outline")x.strokeRect(2,2,c.width-4,c.height-4);if(S.frame==="badge"){x.beginPath();x.roundRect(2,2,c.width-4,c.height-4,n*.06);x.stroke()}if(S.frame==="bottom"||S.frame==="badge"){x.fillStyle=$("frameTextColor").value;x.font="700 "+Math.max(13,Math.round(n*.035))+"px Arial";x.textAlign="center";x.textBaseline="middle";x.fillText($("frameText").value.toUpperCase().slice(0,36),c.width/2,c.height-pad*.5)}x.restore()}const out=await new Promise(r=>c.toBlob(r,"image/png"));save(out,filename()+".png");toast("PNG exported.")}catch(e){toast("PNG export failed. Try a local image or remove the center image.");console.error(e)}}
 function esc(s){return String(s).replace(/[<>&'"]/g,c=>({"<":"&lt;",">":"&gt;","&":"&amp;","'":"&apos;",'"':"&quot;"}[c]))}
-async function svg(){try{const raw=await (await S.qr.getRawData("svg")).text(),n=+$("size").value,pad=Math.round(n*.035),extra=S.frame==="bottom"?Math.round(n*.14):0,total=n+pad*2;let shape="";if(S.frame==="outline")shape='<rect x="2" y="2" width="'+(total-4)+'" height="'+(total+extra-4)+'" fill="none" stroke="'+$("frameColor").value+'" stroke-width="5"/>';if(S.frame==="badge")shape='<rect x="2" y="2" width="'+(total-4)+'" height="'+(total+extra-4)+'" rx="20" fill="none" stroke="'+$("frameColor").value+'" stroke-width="5"/>';let caption="";if(S.frame==="bottom"||S.frame==="badge")caption='<text x="'+total/2+'" y="'+(total+extra*.55)+'" text-anchor="middle" dominant-baseline="middle" font-family="Arial" font-size="'+Math.max(13,Math.round(n*.035))+'" font-weight="700" letter-spacing="2" fill="'+$("frameTextColor").value+'">'+esc($("frameText").value.toUpperCase().slice(0,36))+'</text>';const qr=raw.replace(/<\?xml[^>]*\?>/,"").replace(/<svg\b([^>]*)>/,'<svg$1 x="'+pad+'" y="'+pad+'" width="'+n+'" height="'+n+'">');const bg=$("transparent").checked?"":'<rect width="100%" height="100%" fill="'+$("bgColor").value+'"/>';const out='<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="'+total+'" height="'+(total+extra)+'" viewBox="0 0 '+total+' '+(total+extra)+'">'+bg+shape+qr.replace("</svg>",caption+"</svg>")+'</svg>';save(new Blob([out],{type:"image/svg+xml;charset=utf-8"}),filename()+".svg");toast("SVG exported.")}catch(e){toast("SVG export failed. Try a local image or remove the center image.");console.error(e)}}
+async function svg(){
+ try{
+  const raw=await (await S.qr.getRawData("svg")).text();
+  const n=+$("size").value,pad=Math.round(n*.035),extra=S.frame==="bottom"?Math.round(n*.14):0,total=n+pad*2,height=total+extra;
+  const parsed=new DOMParser().parseFromString(raw,"image/svg+xml");
+  if(parsed.querySelector("parsererror"))throw Error("QR engine returned invalid SVG");
+  const source=parsed.documentElement;
+  if(!source||source.localName!=="svg")throw Error("QR engine returned no SVG root");
+  const ns="http://www.w3.org/2000/svg",out=document.createElementNS(ns,"svg");
+  out.setAttribute("xmlns",ns);
+  out.setAttribute("xmlns:xlink","http://www.w3.org/1999/xlink");
+  out.setAttribute("width",String(total));
+  out.setAttribute("height",String(height));
+  out.setAttribute("viewBox","0 0 "+total+" "+height);
+  if(!$("transparent").checked){
+   const bg=document.createElementNS(ns,"rect");
+   bg.setAttribute("width","100%");bg.setAttribute("height","100%");
+   bg.setAttribute("fill",$("bgColor").value);out.appendChild(bg);
+  }
+  const group=document.createElementNS(ns,"g");
+  group.setAttribute("transform","translate("+pad+" "+pad+")");
+  Array.from(source.childNodes).forEach(node=>group.appendChild(document.importNode(node,true)));
+  out.appendChild(group);
+  if(S.frame==="outline"||S.frame==="badge"){
+   const border=document.createElementNS(ns,"rect");
+   border.setAttribute("x","2");border.setAttribute("y","2");
+   border.setAttribute("width",String(total-4));border.setAttribute("height",String(height-4));
+   if(S.frame==="badge")border.setAttribute("rx","20");
+   border.setAttribute("fill","none");border.setAttribute("stroke",$("frameColor").value);
+   border.setAttribute("stroke-width","5");out.appendChild(border);
+  }
+  if(S.frame==="bottom"||S.frame==="badge"){
+   const caption=document.createElementNS(ns,"text");
+   caption.setAttribute("x",String(total/2));caption.setAttribute("y",String(total+extra*.55));
+   caption.setAttribute("text-anchor","middle");caption.setAttribute("dominant-baseline","middle");
+   caption.setAttribute("font-family","Arial, sans-serif");
+   caption.setAttribute("font-size",String(Math.max(13,Math.round(n*.035))));
+   caption.setAttribute("font-weight","700");caption.setAttribute("letter-spacing","2");
+   caption.setAttribute("fill",$("frameTextColor").value);
+   caption.textContent=$("frameText").value.toUpperCase().slice(0,36);
+   out.appendChild(caption);
+  }
+  const serialized=new XMLSerializer().serializeToString(out);
+  const check=new DOMParser().parseFromString(serialized,"image/svg+xml");
+  if(check.querySelector("parsererror"))throw Error("Generated SVG failed XML validation");
+  save(new Blob([serialized],{type:"image/svg+xml;charset=utf-8"}),filename()+".svg");
+  toast("SVG exported.");
+ }catch(e){
+  toast("SVG export failed. Check the QR content or center image.");
+  console.error(e);
+ }
+}
 async function copy(){try{const blob=await S.qr.getRawData("png");if(!navigator.clipboard||!window.ClipboardItem)throw Error();await navigator.clipboard.write([new ClipboardItem({"image/png":blob})]);toast("QR image copied.")}catch(e){toast("Clipboard image is unavailable. Download the PNG instead.")}}
 function upload(file){if(!file)return;if(file.size>2*1024*1024){toast("Image is larger than 2 MB.");return}if(!/^image\/(png|jpeg|webp|svg\+xml)$/.test(file.type)){toast("Choose PNG, JPG, SVG or WebP.");return}const r=new FileReader();r.onload=()=>{S.logo=r.result;$("logoOptions").style.display="block";later();toast("Center image added.")};r.onerror=()=>toast("Could not read this image.");r.readAsDataURL(file)}
 function bind(){
