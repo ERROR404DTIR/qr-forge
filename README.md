@@ -1,4 +1,6 @@
 QR Forge
+
+<p align="center"><img src="assets/readme-banner.svg" alt="Animated QR Forge studio banner" width="100%"></p>
 ========
 
 A lightweight QR code studio for creating, styling and exporting custom QR codes.
